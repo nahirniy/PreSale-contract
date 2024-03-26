@@ -9,17 +9,18 @@ contract TokenSale {
     IERC20 public token;
     address public owner;
     uint public availableTokens;
-    uint public saleStartTime;
-    uint public saleEndTime;
+    uint public startAt;
+    uint public endsAt;
 
     event Bought(uint _amount, address indexed _buyer);
+    event TokenSaleEnded(uint _amoutUnpurchasedTokens, uint _endTime);
 
     constructor() {
         token = new SolarGreen(address(this));
         owner = msg.sender;
         availableTokens = token.balanceOf(address(this)) / 2;
-        saleStartTime = block.timestamp;
-        saleEndTime = 5 * 7 * 24 * 60 * 60 + saleStartTime; // 5 week
+        startAt = block.timestamp;
+        endsAt = 5 * 7 * 24 * 60 * 60 + startAt; // 5 week
     }
 
     modifier onlyOwner() {
@@ -32,14 +33,22 @@ contract TokenSale {
     }
 
     function setSaleEndTime(uint _newDuration) external onlyOwner {
-        saleEndTime = _newDuration + saleStartTime;
+        endsAt = _newDuration + startAt;
+    }
+
+    function setSaleStartTime(uint _startTime) external onlyOwner {
+        startAt = _startTime;
     }
 
     receive() external payable {
         uint tokensToBuy = msg.value; // 1 token - 1 wei
 
-        require(block.timestamp >= saleStartTime, "Sale has not started yet");
-        require(block.timestamp < saleEndTime, "Sale has ended");
+        if (availableTokens == 0 || block.timestamp >= endsAt) {
+            emit TokenSaleEnded(availableTokens, endsAt);
+        }
+
+        require(block.timestamp >= startAt, "sale has not started yet");
+        require(block.timestamp < endsAt, "sale has ended");
         require(tokensToBuy > 0, "not enough funds!");
         require(tokensToBuy <= 50000, "can't buy more than 50k token");
         require(tokensToBuy <= availableTokens, "not enough tokens");
