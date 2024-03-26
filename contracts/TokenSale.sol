@@ -18,8 +18,8 @@ contract TokenSale {
         token = new SolarGreen(address(this));
         owner = msg.sender;
         availableTokens = token.balanceOf(address(this)) / 2;
-        saleEndTime = 5 * 7 * 24 * 60 * 60 + saleStartTime; // 5 week
         saleStartTime = block.timestamp;
+        saleEndTime = 5 * 7 * 24 * 60 * 60 + saleStartTime; // 5 week
     }
 
     modifier onlyOwner() {
