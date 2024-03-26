@@ -1,7 +1,6 @@
-import { time, loadFixture } from "@nomicfoundation/hardhat-toolbox/network-helpers";
-import { anyValue } from "@nomicfoundation/hardhat-chai-matchers/withArgs";
+import { loadFixture } from "@nomicfoundation/hardhat-toolbox/network-helpers";
 import { expect } from "chai";
-import hre, { ethers } from "hardhat";
+import { ethers } from "hardhat";
 
 describe("SolarGreen", function () {
   async function deploy() {
@@ -25,9 +24,9 @@ describe("SolarGreen", function () {
   it("should be correct supply", async function () {
     const { token } = await loadFixture(deploy);
 
-    const decimals = BigInt(10) ** (await token.decimals());
+    // const decimals = BigInt(10) ** (await token.decimals());
 
-    expect(await token.totalSupply()).to.eq(BigInt(100000000) * decimals);
+    expect(await token.totalSupply()).to.eq(100000000);
   });
 
   it("should transfer ownership to new owner", async function () {
@@ -40,7 +39,7 @@ describe("SolarGreen", function () {
     expect(await token.owner()).to.equal(newOwner.address);
   });
 
-  it("allow to buy", async function () {
+  it("correct transfer to", async function () {
     const { buyer, token } = await loadFixture(deploy);
     const amount = 3;
 
@@ -50,7 +49,7 @@ describe("SolarGreen", function () {
     expect(balanceBuyer).to.equal(amount);
   });
 
-  it("allow to buy from", async function () {
+  it("correct transfer from", async function () {
     const { owner, buyer, spender, token } = await loadFixture(deploy);
 
     const amount = 8;
@@ -100,4 +99,34 @@ describe("SolarGreen", function () {
   //   expect(await token.allowance(owner.address, spender.address));
   //   expect(await token.totalSupply()).to.equal(expectedTotalSupply);
   // });
+
+  it("should added this address to blacklist", async function () {
+    const { buyer, token } = await loadFixture(deploy);
+
+    expect(await token.isBlacklisted(buyer.address)).to.eq(false);
+
+    await token.addToBlacklist(buyer.address);
+
+    expect(await token.isBlacklisted(buyer.address)).to.eq(true);
+  });
+
+  it("should remove this address from blacklist", async function () {
+    const { buyer, token } = await loadFixture(deploy);
+
+    await token.addToBlacklist(buyer.address);
+
+    expect(await token.isBlacklisted(buyer.address)).to.eq(true);
+
+    await token.removeFromBlacklist(buyer.address);
+
+    expect(await token.isBlacklisted(buyer.address)).to.eq(false);
+  });
+
+  it("can't transfer token if address in blacklist", async function () {
+    const { buyer, token } = await loadFixture(deploy);
+    const amount = 3;
+
+    await token.addToBlacklist(buyer.address);
+    await expect(token.transfer(buyer.address, amount)).to.be.revertedWith("recipiant is blacklisted");
+  });
 });
