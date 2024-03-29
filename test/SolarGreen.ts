@@ -24,9 +24,9 @@ describe("SolarGreen", function () {
   it("should be correct supply", async function () {
     const { token } = await loadFixture(deploy);
 
-    // const decimals = BigInt(10) ** (await token.decimals());
+    const decimals = BigInt(10) ** (await token.decimals());
 
-    expect(await token.totalSupply()).to.eq(100000000);
+    expect(await token.totalSupply()).to.eq(BigInt(100000000) * decimals);
   });
 
   it("should transfer ownership to new owner", async function () {

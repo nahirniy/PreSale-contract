@@ -43,12 +43,15 @@ describe("TokenSale", function () {
 
   it("can't buy more than 50k token", async function () {
     const { buyer, shop } = await loadFixture(deploy);
-    const tokenAmount = 50001;
+    const tokenAmount = 30000;
 
     const txData = {
       value: tokenAmount,
       to: shop.target,
     };
+
+    const tx = await buyer.sendTransaction(txData);
+    await tx.wait();
 
     await expect(buyer.sendTransaction(txData)).to.be.revertedWith("can't buy more than 50k token");
   });

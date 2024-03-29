@@ -11,7 +11,7 @@ contract SolarGreen is ERC20, ERC20Burnable, Ownable {
     constructor(
         address initialOwner
     ) ERC20("Solar Green", "SGR") Ownable(initialOwner) {
-        _mint(msg.sender, 100000000);
+        _mint(msg.sender, 100000000 * 10 ** decimals());
     }
 
     function mint(address to, uint256 amount) public onlyOwner {
