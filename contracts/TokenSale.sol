@@ -1,10 +1,8 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.24;
 
-// import "@chainlink/contracts/src/v0.8/interfaces/AggregatorV3Interface.sol";
-
-import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@chainlink/contracts/src/v0.8/interfaces/AggregatorV3Interface.sol";
+import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "./SolarGreen.sol";
 
 contract TokenSale {
@@ -96,13 +94,14 @@ contract TokenSale {
 
     function getLatestPrice() public view returns (uint) {
         (, int price, , , ) = aggregatorInterface.latestRoundData();
+        require(price >= 0, "Price cannot be negative");
         price = (price * 10 ** 10);
         return uint(price);
     }
 
     function ethBuyHelper(uint _amount) external view returns (uint ethAmount) {
         uint256 usdPrice = _amount * tokenPrice;
-        ethAmount = (usdPrice * BASE_MULTIPLIER) / getLatestPrice();
+        ethAmount = usdPrice / getLatestPrice();
     }
 
     function usdtBuyHelper(uint _amount) external view returns (uint usdPrice) {

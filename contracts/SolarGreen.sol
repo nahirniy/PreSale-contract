@@ -38,4 +38,14 @@ contract SolarGreen is ERC20, ERC20Burnable, Ownable {
 
         return super.transfer(to, value);
     }
+
+    function transferFrom(
+        address from,
+        address to,
+        uint256 value
+    ) public virtual override returns (bool) {
+        require(!isBlacklisted(to), "recipiant is blacklisted");
+
+        return super.transferFrom(from, to, value);
+    }
 }

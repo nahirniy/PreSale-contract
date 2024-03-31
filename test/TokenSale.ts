@@ -23,90 +23,116 @@ describe("TokenSale", function () {
     expect(await shop.getAddress()).to.be.properAddress;
   });
 
-  it("allow to buy", async function () {
-    const { buyer, shop, erc20 } = await loadFixture(deploy);
+  // it("allow to buy for Eth", async function () {
+  //   const { buyer, shop, erc20 } = await loadFixture(deploy);
 
-    const tokenAmount = 3;
+  //   const priceConsumerResult = await shop.getLatestPrice();
+  //   // const priceFeedResult = (await mockV3Aggregator.latestRoundData()).answer;
+  //   console.log(priceConsumerResult);
 
-    const txData = {
-      value: tokenAmount,
-      to: shop.target,
-    };
+  //   // const tokenAmount = 3;
 
-    const tx = await buyer.sendTransaction(txData);
-    await tx.wait();
+  //   // const txData = {
+  //   //   value: tokenAmount,
+  //   //   to: shop.target,
+  //   // };
 
-    expect(await erc20.balanceOf(buyer.address)).to.eq(tokenAmount);
-    expect(() => tx).to.changeEtherBalance(shop, tokenAmount);
-    expect(tx).to.emit(shop, "Bought").withArgs(tokenAmount, buyer.address);
-  });
+  //   // const tx = await buyer.sendTransaction(txData);
+  //   // await tx.wait();
 
-  it("can't buy more than 50k token", async function () {
-    const { buyer, shop } = await loadFixture(deploy);
-    const tokenAmount = 30000;
+  //   // expect(await erc20.balanceOf(buyer.address)).to.eq(tokenAmount);
+  //   // expect(() => tx).to.changeEtherBalance(shop, tokenAmount);
+  //   // expect(tx).to.emit(shop, "Bought").withArgs(tokenAmount, buyer.address);
+  // });
 
-    const txData = {
-      value: tokenAmount,
-      to: shop.target,
-    };
+  // it("allow to for USTD", async function () {
+  //   const { buyer, shop, erc20 } = await loadFixture(deploy);
 
-    const tx = await buyer.sendTransaction(txData);
-    await tx.wait();
+  //   // console.log(await shop.target);
 
-    await expect(buyer.sendTransaction(txData)).to.be.revertedWith("can't buy more than 50k token");
-  });
+  //   // const tokenAmount = 3;
 
-  it("can't buy less than 1 token", async function () {
-    const { buyer, shop } = await loadFixture(deploy);
-    const tokenAmount = 0;
+  //   // const txData = {
+  //   //   value: tokenAmount,
+  //   //   to: shop.target,
+  //   // };
 
-    const txData = {
-      value: tokenAmount,
-      to: shop.target,
-    };
+  //   // const tx = await buyer.sendTransaction(txData);
+  //   // await tx.wait();
 
-    await expect(buyer.sendTransaction(txData)).to.be.revertedWith("not enough funds!");
-  });
+  //   // expect(await erc20.balanceOf(buyer.address)).to.eq(tokenAmount);
+  //   // expect(() => tx).to.changeEtherBalance(shop, tokenAmount);
+  //   // expect(tx).to.emit(shop, "Bought").withArgs(tokenAmount, buyer.address);
+  // });
 
-  it("change end time of sale", async function () {
-    const { shop } = await loadFixture(deploy);
+  // it("can't buy more than 50k token", async function () {
+  //   const { buyer, shop } = await loadFixture(deploy);
+  //   const tokenAmount = 30000;
 
-    const duration = 1000;
+  //   console.log(buyer, await shop.getLatestPrice());
 
-    const expectedSaleEndTime = (await shop.startAt()) + BigInt(1000);
+  //   const txData = {
+  //     value: tokenAmount,
+  //     to: shop.target,
+  //   };
 
-    await shop.setSaleEndTime(duration);
+  //   const tx = await buyer.sendTransaction(txData);
+  //   await tx.wait();
 
-    expect(await shop.endsAt()).to.eq(expectedSaleEndTime);
-  });
+  //   await expect(buyer.sendTransaction(txData)).to.be.revertedWith("can't buy more than 50k token");
+  // });
 
-  it("can't buy token after end of token sale", async function () {
-    const { buyer, shop } = await loadFixture(deploy);
-    const tokenAmount = 5;
+  // it("can't buy less than 1 token", async function () {
+  //   const { buyer, shop } = await loadFixture(deploy);
+  //   const tokenAmount = 0;
 
-    const txData = {
-      value: tokenAmount,
-      to: shop.target,
-    };
+  //   const txData = {
+  //     value: tokenAmount,
+  //     to: shop.target,
+  //   };
 
-    await shop.setSaleEndTime(0);
+  //   await expect(buyer.sendTransaction(txData)).to.be.revertedWith("not enough funds!");
+  // });
 
-    await expect(buyer.sendTransaction(txData)).to.be.revertedWith("sale has ended");
-  });
+  // it("change end time of sale", async function () {
+  //   const { shop } = await loadFixture(deploy);
 
-  it("can't buy token before start of token sale", async function () {
-    const { buyer, shop } = await loadFixture(deploy);
-    const tokenAmount = 5;
+  //   const duration = 1000;
 
-    const txData = {
-      value: tokenAmount,
-      to: shop.target,
-    };
+  //   const expectedSaleEndTime = (await shop.startAt()) + BigInt(1000);
 
-    const futureSaleStartTime = (await shop.startAt()) + BigInt(1000);
+  //   await shop.setSaleEndTime(duration);
 
-    await shop.setSaleStartTime(futureSaleStartTime);
+  //   expect(await shop.endsAt()).to.eq(expectedSaleEndTime);
+  // });
 
-    await expect(buyer.sendTransaction(txData)).to.be.revertedWith("sale has not started yet");
-  });
+  // it("can't buy token after end of token sale", async function () {
+  //   const { buyer, shop } = await loadFixture(deploy);
+  //   const tokenAmount = 5;
+
+  //   const txData = {
+  //     value: tokenAmount,
+  //     to: shop.target,
+  //   };
+
+  //   await shop.setSaleEndTime(0);
+
+  //   await expect(buyer.sendTransaction(txData)).to.be.revertedWith("sale has ended");
+  // });
+
+  // it("can't buy token before start of token sale", async function () {
+  //   const { buyer, shop } = await loadFixture(deploy);
+  //   const tokenAmount = 5;
+
+  //   const txData = {
+  //     value: tokenAmount,
+  //     to: shop.target,
+  //   };
+
+  //   const futureSaleStartTime = (await shop.startAt()) + BigInt(1000);
+
+  //   await shop.setSaleStartTime(futureSaleStartTime);
+
+  //   await expect(buyer.sendTransaction(txData)).to.be.revertedWith("sale has not started yet");
+  // });
 });

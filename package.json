@@ -16,7 +16,6 @@
   "dependencies": {
     "@chainlink/contracts": "^0.8.0",
     "@openzeppelin/contracts": "^5.0.2",
-    "@openzeppelin/contracts-upgradeable": "^5.0.2",
-    "bignumber.js": "^9.1.2"
+    "dotenv": "^16.4.5"
   }
 }
