@@ -4,48 +4,49 @@ pragma solidity ^0.8.24;
 import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/extensions/ERC20Burnable.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
+import "@openzeppelin/contracts/access/AccessControl.sol";
 
-contract SolarGreen is ERC20, ERC20Burnable, Ownable {
+contract SolarGreen is ERC20, ERC20Burnable, AccessControl {
+    bytes32 public constant ADMIN = keccak256("ADMIN");
+    bytes32 public constant BLACKLISTER = keccak256("BLACKLISTER");
+
     mapping(address => bool) private _blacklist;
 
     constructor(
-        address initialOwner
-    ) ERC20("Solar Green", "SGR") Ownable(initialOwner) {
+        address _owner,
+        address _blacklister
+    ) ERC20("Solar Green", "SGR") {
+        _grantRole(ADMIN, _owner);
+        _grantRole(BLACKLISTER, _blacklister);
+
         _mint(msg.sender, 100000000 * 10 ** decimals());
     }
 
-    function mint(address to, uint256 amount) public onlyOwner {
+    function mint(address to, uint256 amount) public onlyRole(ADMIN) {
         _mint(to, amount);
     }
 
-    function addToBlacklist(address _to) public onlyOwner {
+    function burn(uint value) public virtual override onlyRole(ADMIN) {
+        super.burn(value);
+    }
+
+    function addBlacklister(address _newBlacklister) public onlyRole(ADMIN) {
+        _grantRole(BLACKLISTER, _newBlacklister);
+    }
+
+    function removeBlacklister(address _blacklister) public onlyRole(ADMIN) {
+        revokeRole(BLACKLISTER, _blacklister);
+    }
+
+    function addToBlacklist(address _to) public onlyRole(BLACKLISTER) {
         _blacklist[_to] = true;
     }
 
-    function removeFromBlacklist(address _to) public onlyOwner {
+    function removeFromBlacklist(address _to) public onlyRole(BLACKLISTER) {
         _blacklist[_to] = false;
     }
 
     function isBlacklisted(address _to) public view returns (bool) {
         return _blacklist[_to];
-    }
-
-    function transfer(
-        address to,
-        uint256 value
-    ) public virtual override returns (bool) {
-        require(!isBlacklisted(to), "recipiant is blacklisted");
-
-        return super.transfer(to, value);
-    }
-
-    function transferFrom(
-        address from,
-        address to,
-        uint256 value
-    ) public virtual override returns (bool) {
-        require(!isBlacklisted(to), "recipiant is blacklisted");
-
-        return super.transferFrom(from, to, value);
     }
 }

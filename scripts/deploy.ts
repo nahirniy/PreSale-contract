@@ -9,6 +9,7 @@ async function main() {
   const availableTokens = BigInt(50000000) * precision;
   const limitTokensPerUser = BigInt(50000) * precision;
   const tokenPrice = (BigInt(7) * precision) / BigInt(100); // 0.07$ per token
+  const vestingEnd = 1735696799; // end of 2024
   const priceFeed = "0x694AA1769357215DE4FAC081bf1f309aDC325306";
 
   const TokenSale = await ethers.getContractFactory("TokenSale", signer);
@@ -19,6 +20,7 @@ async function main() {
     availableTokens,
     limitTokensPerUser,
     tokenPrice,
+    vestingEnd,
     priceFeed
   );
 
