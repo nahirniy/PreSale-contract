@@ -2,15 +2,15 @@
 pragma solidity ^0.8.24;
 
 import "@chainlink/contracts/src/v0.8/interfaces/AggregatorV3Interface.sol";
+import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "./SolarGreen.sol";
 
-contract TokenSale {
+contract TokenSale is Ownable {
     mapping(address => uint) private _userBalances;
 
     IERC20 public token;
     IERC20 public usdt;
-    address public owner;
     uint public BASE_MULTIPLIER;
     uint public startAt;
     uint public endsAt;
@@ -21,34 +21,34 @@ contract TokenSale {
     AggregatorV3Interface internal aggregatorInterface;
 
     event Bought(uint _amount, address indexed _buyer);
-    // event TokenSaleEnded(uint _amoutUnpurchasedTokens, uint _endTime);
+    // 0x694AA1769357215DE4FAC081bf1f309aDC325306 priceFeed
+    // 0x1531BC5dE10618c511349f8007C08966E45Ce8ef ustd 18 desimals
+    constructor(
+        address initialOwner,
+        address _ustd,
+        uint _precision,
+        uint _availableTokens,
+        uint _limitTokensPerUser,
+        uint _tokenPrice,
+        address _priceFeed
+    ) Ownable(initialOwner) {
+        token = new SolarGreen(initialOwner);
+        usdt = IERC20(_ustd);
+        BASE_MULTIPLIER = _precision;
 
-    constructor() {
-        token = new SolarGreen(address(this));
-        usdt = IERC20(address(0x1531BC5dE10618c511349f8007C08966E45Ce8ef));
-
-        owner = msg.sender;
-
-        availableTokens = token.balanceOf(address(this)) / 2;
-        limitTokensPerUser = 50000 * BASE_MULTIPLIER;
-        BASE_MULTIPLIER = 10 ** 18;
+        availableTokens = _availableTokens;
+        limitTokensPerUser = _limitTokensPerUser;
 
         startAt = block.timestamp;
-        endsAt = 5 * 7 * 24 * 60 * 60 + startAt; // 5 weeks
+        endsAt = startAt + 5 weeks;
 
-        tokenPrice = (7 * BASE_MULTIPLIER) / 1000; // 0.007$
-        aggregatorInterface = AggregatorV3Interface(
-            address(0x694AA1769357215DE4FAC081bf1f309aDC325306)
-        );
+        tokenPrice = _tokenPrice;
+        aggregatorInterface = AggregatorV3Interface(address(_priceFeed));
     }
 
-    modifier onlyOwner() {
-        require((msg.sender == owner), "not an owner");
-        _;
-    }
-
-    function verifyPurchase(address _buyer, uint _amountTokens) private {
-        uint _userTokens = _userBalances[_buyer] += _amountTokens;
+    function verifyPurchase(address _buyer, uint _amountTokens) private view {
+        uint _currentUserTokens = _userBalances[_buyer];
+        uint _userTokens = _currentUserTokens += _amountTokens;
 
         require(
             _userTokens <= limitTokensPerUser,
@@ -101,7 +101,7 @@ contract TokenSale {
 
     function ethBuyHelper(uint _amount) external view returns (uint ethAmount) {
         uint256 usdPrice = _amount * tokenPrice;
-        ethAmount = usdPrice / getLatestPrice();
+        ethAmount = (usdPrice * BASE_MULTIPLIER) / getLatestPrice();
     }
 
     function usdtBuyHelper(uint _amount) external view returns (uint usdPrice) {
