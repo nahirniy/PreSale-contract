@@ -5,7 +5,7 @@ import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 
 contract TestUSTD is ERC20 {
     constructor() ERC20("United States Dollar Tether", "USDT") {
-        _mint(address(this), 100000000000 * 10 ** decimals());
+        _mint(address(this), 100000000000 ether);
     }
 
     function mint() public {

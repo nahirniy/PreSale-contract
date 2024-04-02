@@ -11,7 +11,7 @@ contract TokenSale is Ownable {
 
     SolarGreen public token;
     IERC20 public usdt;
-    uint public BASE_MULTIPLIER;
+    uint public PRECISION;
     uint public startAt;
     uint public endsAt;
     uint public vestingEnd;
@@ -29,17 +29,18 @@ contract TokenSale is Ownable {
 
     constructor(
         address _initialOwner,
+        address _token,
         address _ustd,
+        address _priceFeed,
         uint _precision,
         uint _availableTokens,
         uint _limitTokensPerUser,
         uint _tokenPrice,
-        uint _vestingEnd,
-        address _priceFeed
+        uint _vestingEnd
     ) Ownable(_initialOwner) {
-        token = new SolarGreen(_initialOwner, _initialOwner);
+        token = SolarGreen(_token);
         usdt = IERC20(_ustd);
-        BASE_MULTIPLIER = _precision;
+        PRECISION = _precision;
 
         availableTokens = _availableTokens;
         limitTokensPerUser = _limitTokensPerUser;
@@ -56,38 +57,38 @@ contract TokenSale is Ownable {
         endsAt = _newDuration + startAt;
     }
 
-    function _verifyPurchase(address _buyer, uint _amountTokens) private view {
+    function _verifyPurchase(address _buyer, uint _amountTokens) internal view {
         uint _currentUserTokens = _userBalances[_buyer];
         uint _userTokens = _currentUserTokens += _amountTokens;
 
         require(!token.isBlacklisted(_buyer), "recipiant is blacklisted");
         require(_userTokens <= limitTokensPerUser, "cant buy more than 50k");
         require(block.timestamp >= startAt, "sale has not started yet");
-        require(block.timestamp < endsAt, "sale has ended");
+        require(block.timestamp <= endsAt, "sale has ended");
         require(_amountTokens > 0, "not enough funds!");
         require(_amountTokens <= availableTokens, "not enough tokens");
     }
 
-    function _tokenPurchase(address _buyer, uint _amountTokens) private {
+    function _tokenPurchase(address _buyer, uint _amountTokens) internal {
         availableTokens -= _amountTokens;
         _userBalances[_buyer] += _amountTokens;
 
         emit Bought(_amountTokens, _buyer);
     }
 
-    function tokenBalance() public view returns (uint) {
+    function tokenBalance() external view returns (uint) {
         return token.balanceOf(address(this));
     }
 
-    function ethBalance() public view returns (uint) {
+    function ethBalance() external view returns (uint) {
         return address(this).balance;
     }
 
-    function usdtBalance() public view returns (uint) {
+    function usdtBalance() external view returns (uint) {
         return usdt.balanceOf(address(this));
     }
 
-    function getAllowance() public view returns (uint value) {
+    function getAllowance() internal view returns (uint value) {
         value = usdt.allowance(msg.sender, address(this));
     }
 
@@ -102,13 +103,13 @@ contract TokenSale is Ownable {
         return uint(price);
     }
 
-    function ethBuyHelper(uint _amount) external view returns (uint ethAmount) {
-        uint usdPrice = (_amount * tokenPrice) / BASE_MULTIPLIER;
-        ethAmount = (usdPrice * BASE_MULTIPLIER) / getLatestPrice();
+    function ethBuyHelper(uint _amount) public view returns (uint ethAmount) {
+        uint usdPrice = (_amount * tokenPrice) / PRECISION;
+        ethAmount = (usdPrice * PRECISION) / getLatestPrice();
     }
 
-    function usdtBuyHelper(uint _amount) external view returns (uint usdPrice) {
-        usdPrice = (_amount * tokenPrice) / BASE_MULTIPLIER;
+    function usdtBuyHelper(uint _amount) public view returns (uint usdPrice) {
+        usdPrice = (_amount * tokenPrice) / PRECISION;
     }
 
     function checkUserBalance(address _address) external view returns (uint) {
@@ -116,10 +117,10 @@ contract TokenSale is Ownable {
     }
 
     function buyWithUSDT(uint _amount) external {
-        uint usdPrice = (_amount * tokenPrice) / BASE_MULTIPLIER;
+        uint usdPrice = usdtBuyHelper(_amount);
 
         _verifyPurchase(msg.sender, _amount);
-        // require(getAllowance() >= usdPrice, "not approved enough tokens");
+        require(getAllowance() >= usdPrice, "not approved enough tokens");
 
         usdt.transferFrom(msg.sender, address(this), usdPrice);
 
@@ -127,8 +128,7 @@ contract TokenSale is Ownable {
     }
 
     function buyWithEth(uint _amount) external payable {
-        uint usdPrice = (_amount * tokenPrice) / BASE_MULTIPLIER;
-        uint ethAmount = (usdPrice * BASE_MULTIPLIER) / getLatestPrice();
+        uint ethAmount = ethBuyHelper(_amount);
 
         _verifyPurchase(msg.sender, _amount);
         require(msg.value >= ethAmount, "Less payment");
@@ -152,5 +152,13 @@ contract TokenSale is Ownable {
         _userBalances[_holder] -= _userTokens;
 
         emit Claimed(_userTokens, _holder);
+    }
+
+    function withdraw(uint256 amount) external onlyOwner {
+        require(address(this).balance >= amount, "Insufficient balance");
+
+        address owner = owner();
+
+        payable(owner).transfer(amount);
     }
 }

@@ -18,7 +18,7 @@ contract SolarGreen is ERC20, ERC20Burnable, AccessControl {
         _grantRole(ADMIN, _owner);
         _grantRole(BLACKLISTER, _blacklister);
 
-        _mint(msg.sender, 100000000 * 10 ** decimals());
+        _mint(msg.sender, 100000000 ether);
     }
 
     function mint(address to, uint256 amount) public onlyRole(ADMIN) {
