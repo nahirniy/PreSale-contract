@@ -3,7 +3,6 @@ pragma solidity ^0.8.24;
 
 import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/extensions/ERC20Burnable.sol";
-import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/access/AccessControl.sol";
 
 contract SolarGreen is ERC20, ERC20Burnable, AccessControl {
@@ -35,7 +34,7 @@ contract SolarGreen is ERC20, ERC20Burnable, AccessControl {
     }
 
     function removeBlacklister(address _blacklister) public onlyRole(ADMIN) {
-        revokeRole(BLACKLISTER, _blacklister);
+        _revokeRole(BLACKLISTER, _blacklister);
     }
 
     function addToBlacklist(address _to) public onlyRole(BLACKLISTER) {

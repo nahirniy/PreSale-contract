@@ -7,17 +7,17 @@ describe("SolarGreen", function () {
     const [owner, buyer, spender, newOwner] = await ethers.getSigners();
 
     const SolarGreen = await ethers.getContractFactory("SolarGreen", owner);
-    const token = await SolarGreen.deploy(owner.address);
+    const token = await SolarGreen.deploy(owner.address, owner.address);
 
     await token.transfer(spender.address, 30);
 
     return { owner, buyer, spender, newOwner, token };
   }
 
-  it("should have an owner", async function () {
+  it("owner must be admin", async function () {
     const { owner, token } = await loadFixture(deploy);
 
-    expect(await token.owner()).to.eq(owner.address);
+    expect(await token.hasRole(await token.ADMIN(), owner.address)).to.be.true;
     expect(await token.getAddress()).to.be.properAddress;
   });
 
@@ -27,16 +27,6 @@ describe("SolarGreen", function () {
     const decimals = BigInt(10) ** (await token.decimals());
 
     expect(await token.totalSupply()).to.eq(BigInt(100000000) * decimals);
-  });
-
-  it("should transfer ownership to new owner", async function () {
-    const { owner, newOwner, token } = await loadFixture(deploy);
-
-    expect(await token.owner()).to.equal(owner.address);
-
-    await token.transferOwnership(newOwner.address);
-
-    expect(await token.owner()).to.equal(newOwner.address);
   });
 
   it("correct transfer to", async function () {
@@ -54,7 +44,7 @@ describe("SolarGreen", function () {
 
     const amount = 8;
 
-    token.approve(spender.address, amount);
+    await token.approve(spender.address, amount);
 
     await token.connect(spender).transferFrom(owner.address, buyer.address, amount);
 
@@ -86,47 +76,28 @@ describe("SolarGreen", function () {
     expect(await token.totalSupply()).to.eq(expectedTotalSupply);
   });
 
-  // it("allow to burn from", async function () {
-  //   const { owner, buyer, spender, token } = await loadFixture(deploy);
+  it("only blacklister should add and remove address to blacklist", async function () {
+    const { buyer: blacklister, spender, token } = await loadFixture(deploy);
 
-  //   const amount = 8;
-  //   const expectedTotalSupply = (await token.totalSupply()) - BigInt(amount);
+    await token.addBlacklister(blacklister.address);
+    await token.connect(blacklister).addToBlacklist(spender.address);
 
-  //   token.approve(spender.address, amount);
+    expect(await token.isBlacklisted(spender.address)).to.eq(true);
 
-  //   await token.burnFrom(spender.address, amount);
+    await token.connect(blacklister).removeFromBlacklist(spender.address);
 
-  //   expect(await token.allowance(owner.address, spender.address));
-  //   expect(await token.totalSupply()).to.equal(expectedTotalSupply);
-  // });
-
-  it("should added this address to blacklist", async function () {
-    const { buyer, token } = await loadFixture(deploy);
-
-    expect(await token.isBlacklisted(buyer.address)).to.eq(false);
-
-    await token.addToBlacklist(buyer.address);
-
-    expect(await token.isBlacklisted(buyer.address)).to.eq(true);
+    expect(await token.isBlacklisted(spender.address)).to.eq(false);
   });
 
-  it("should remove this address from blacklist", async function () {
-    const { buyer, token } = await loadFixture(deploy);
+  it("should add and remove a blacklister", async function () {
+    const { buyer: blacklister, token } = await loadFixture(deploy);
 
-    await token.addToBlacklist(buyer.address);
+    await token.addBlacklister(blacklister.address);
 
-    expect(await token.isBlacklisted(buyer.address)).to.eq(true);
+    expect(await token.hasRole(await token.BLACKLISTER(), blacklister.address)).to.be.true;
 
-    await token.removeFromBlacklist(buyer.address);
+    await token.removeBlacklister(blacklister.address);
 
-    expect(await token.isBlacklisted(buyer.address)).to.eq(false);
-  });
-
-  it("can't transfer token if address in blacklist", async function () {
-    const { buyer, token } = await loadFixture(deploy);
-    const amount = 3;
-
-    await token.addToBlacklist(buyer.address);
-    await expect(token.transfer(buyer.address, amount)).to.be.revertedWith("recipiant is blacklisted");
+    expect(await token.hasRole(await token.BLACKLISTER(), blacklister.address)).to.be.false;
   });
 });

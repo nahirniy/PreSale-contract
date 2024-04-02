@@ -4,7 +4,7 @@ async function main() {
   const [signer] = await ethers.getSigners();
 
   const owner = "0xF495a8a96A5E933Ce3CD0ee89BD02550232e5A49";
-  const ustd = "0x1531BC5dE10618c511349f8007C08966E45Ce8ef";
+  const usdt = "0x1531BC5dE10618c511349f8007C08966E45Ce8ef";
   const precision = BigInt(10 ** 18);
   const availableTokens = BigInt(50000000) * precision;
   const limitTokensPerUser = BigInt(50000) * precision;
@@ -15,7 +15,7 @@ async function main() {
   const TokenSale = await ethers.getContractFactory("TokenSale", signer);
   const shop = await TokenSale.deploy(
     owner,
-    ustd,
+    usdt,
     precision,
     availableTokens,
     limitTokensPerUser,

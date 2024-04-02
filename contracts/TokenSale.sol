@@ -107,19 +107,23 @@ contract TokenSale is Ownable {
     }
 
     function ethBuyHelper(uint _amount) external view returns (uint ethAmount) {
-        uint256 usdPrice = _amount * tokenPrice;
+        uint usdPrice = (_amount * tokenPrice) / BASE_MULTIPLIER;
         ethAmount = (usdPrice * BASE_MULTIPLIER) / getLatestPrice();
     }
 
     function usdtBuyHelper(uint _amount) external view returns (uint usdPrice) {
-        usdPrice = _amount * tokenPrice;
+        usdPrice = (_amount * tokenPrice) / BASE_MULTIPLIER;
+    }
+
+    function checkUserBalance(address _address) external view returns (uint) {
+        return _userBalances[_address];
     }
 
     function buyWithUSDT(uint _amount) external {
         uint usdPrice = (_amount * tokenPrice) / BASE_MULTIPLIER;
 
         _verifyPurchase(msg.sender, _amount);
-        require(getAllowance() >= usdPrice, "not approved enough tokens");
+        // require(getAllowance() >= usdPrice, "not approved enough tokens");
 
         usdt.transferFrom(msg.sender, address(this), usdPrice);
 
