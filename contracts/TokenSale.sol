@@ -56,10 +56,6 @@ contract TokenSale is Ownable {
         endsAt = _newDuration + startAt;
     }
 
-    function setSaleStartTime(uint _startTime) external onlyOwner {
-        startAt = _startTime;
-    }
-
     function _verifyPurchase(address _buyer, uint _amountTokens) private view {
         uint _currentUserTokens = _userBalances[_buyer];
         uint _userTokens = _currentUserTokens += _amountTokens;
