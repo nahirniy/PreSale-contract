@@ -23,30 +23,60 @@ contract SolarGreen is ERC20, AccessControl {
         _mint(address(this), 50000000 ether);
     }
 
+    /**
+     * @dev Mint new tokens and allocate them to a specified account.
+     * @param to The address where the newly minted tokens will be allocated.
+     * @param amount The amount of tokens to mint.
+     */
     function mint(address to, uint256 amount) public onlyRole(ADMIN) {
         _mint(to, amount);
     }
 
+    /**
+     * @dev Burn tokens from the contract's balance.
+     * @param value The amount of tokens to burn.
+     */
     function burn(uint value) public onlyRole(ADMIN) {
         _burn(address(this), value);
     }
 
+    /**
+     *@dev Assigns the role of a blacklister to a new address, granting authority to add addresses to the blacklist.
+     *@param _newBlacklister The address to be assigned the role of a blacklister.
+     */
     function addBlacklister(address _newBlacklister) public onlyRole(ADMIN) {
         _grantRole(BLACKLISTER, _newBlacklister);
     }
 
+    /**
+     * @dev Removes the role of a blacklister from a specified address, thereby revoking their authority to manage the blacklist.
+     * @param _blacklister The address from which to remove the role of blacklister.
+     */
     function removeBlacklister(address _blacklister) public onlyRole(ADMIN) {
         _revokeRole(BLACKLISTER, _blacklister);
     }
 
+    /**
+     * @dev Adds the specified address to the blacklist.
+     * @param _to The address to be added to the blacklist.
+     */
     function addToBlacklist(address _to) public onlyRole(BLACKLISTER) {
         _blacklist[_to] = true;
     }
 
+    /**
+     * @dev Removes the specified address from the blacklist.
+     * @param _to The address to be removed from the blacklist.
+     */
     function removeFromBlacklist(address _to) public onlyRole(BLACKLISTER) {
         _blacklist[_to] = false;
     }
 
+    /**
+     * @dev Checks if the specified address is blacklisted.
+     * @param _to The address to be checked.
+     * @return Whether the address is blacklisted or not.
+     */
     function isBlacklisted(address _to) public view returns (bool) {
         return _blacklist[_to];
     }

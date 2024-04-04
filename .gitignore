@@ -6,6 +6,7 @@
 # Hardhat files
 /cache
 /artifacts
+/bin
 
 # TypeChain files
 /typechain
