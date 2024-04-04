@@ -6,10 +6,12 @@ describe("SolarGreen", function () {
   async function deploy() {
     const [owner, buyer, spender, newOwner] = await ethers.getSigners();
 
+    const tokensForPurchase = ethers.parseUnits("50000000", 18);
+
     const SolarGreen = await ethers.getContractFactory("SolarGreen", owner);
     const token = await SolarGreen.deploy(owner.address, owner.address);
 
-    await token.transfer(spender.address, 30);
+    token.mint(owner.address, tokensForPurchase);
 
     return { owner, buyer, spender, newOwner, token };
   }
@@ -21,17 +23,15 @@ describe("SolarGreen", function () {
     expect(await token.getAddress()).to.be.properAddress;
   });
 
-  it("should be correct supply", async function () {
+  it("should be correct supply 100 mln", async function () {
     const { token } = await loadFixture(deploy);
 
-    const decimals = BigInt(10) ** (await token.decimals());
-
-    expect(await token.totalSupply()).to.eq(BigInt(100000000) * decimals);
+    expect(await token.totalSupply()).to.eq(await token.initiallySupply());
   });
 
   it("correct transfer to", async function () {
     const { buyer, token } = await loadFixture(deploy);
-    const amount = 3;
+    const amount = ethers.parseUnits("3", 18);
 
     await token.transfer(buyer.address, amount);
 
@@ -42,10 +42,9 @@ describe("SolarGreen", function () {
   it("correct transfer from", async function () {
     const { owner, buyer, spender, token } = await loadFixture(deploy);
 
-    const amount = 8;
+    const amount = ethers.parseUnits("8", 18);
 
     await token.approve(spender.address, amount);
-
     await token.connect(spender).transferFrom(owner.address, buyer.address, amount);
 
     const balanceBuyer = await token.balanceOf(buyer.address);
@@ -57,8 +56,8 @@ describe("SolarGreen", function () {
   it("allow to mint new token", async function () {
     const { owner, token } = await loadFixture(deploy);
 
-    const amount = 10;
-    const expectedTotalSupply = (await token.totalSupply()) + BigInt(amount);
+    const amount = ethers.parseUnits("10", 18);
+    const expectedTotalSupply = (await token.totalSupply()) + amount;
 
     await token.mint(owner.address, amount);
 
@@ -66,10 +65,10 @@ describe("SolarGreen", function () {
   });
 
   it("allow to burn token", async function () {
-    const { owner, token } = await loadFixture(deploy);
+    const { token } = await loadFixture(deploy);
 
-    const amount = 8;
-    const expectedTotalSupply = (await token.totalSupply()) - BigInt(amount);
+    const amount = ethers.parseUnits("8", 18);
+    const expectedTotalSupply = (await token.totalSupply()) - amount;
 
     await token.burn(amount);
 
@@ -89,8 +88,8 @@ describe("SolarGreen", function () {
     expect(await token.isBlacklisted(spender.address)).to.eq(false);
   });
 
-  it("should add and remove a blacklister", async function () {
-    const { buyer: blacklister, token } = await loadFixture(deploy);
+  it("only owner can add and remove a blacklister", async function () {
+    const { owner, buyer: blacklister, token } = await loadFixture(deploy);
 
     await token.addBlacklister(blacklister.address);
 
@@ -99,5 +98,6 @@ describe("SolarGreen", function () {
     await token.removeBlacklister(blacklister.address);
 
     expect(await token.hasRole(await token.BLACKLISTER(), blacklister.address)).to.be.false;
+    await expect(token.connect(blacklister).addBlacklister(owner.address)).to.be.reverted;
   });
 });
