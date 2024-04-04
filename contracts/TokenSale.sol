@@ -11,13 +11,13 @@ contract TokenSale is Ownable {
 
     SolarGreen public token;
     IERC20 public usdt;
-    uint public PRECISION;
-    uint public startAt;
-    uint public endsAt;
-    uint public vestingEnd;
-    uint public availableTokens;
-    uint public limitTokensPerUser;
     uint public tokenPrice;
+    uint public PRECISION = 10 ** 18;
+    uint public startAt = block.timestamp;
+    uint public endsAt = startAt + 5 weeks;
+    uint public vestingEnd = 1735696799; // 2024-12-31 23-59
+    uint public availableTokens = 50000000 * PRECISION; // 50 mln
+    uint public limitTokensPerUser = 50000 * PRECISION; // 50k
 
     AggregatorV3Interface internal aggregatorInterface;
 
@@ -29,25 +29,12 @@ contract TokenSale is Ownable {
 
     constructor(
         address _initialOwner,
-        address _token,
         address _ustd,
         address _priceFeed,
-        uint _precision,
-        uint _availableTokens,
-        uint _limitTokensPerUser,
-        uint _tokenPrice,
-        uint _vestingEnd
+        uint _tokenPrice
     ) Ownable(_initialOwner) {
-        token = SolarGreen(_token);
+        token = new SolarGreen(_initialOwner, _initialOwner);
         usdt = IERC20(_ustd);
-        PRECISION = _precision;
-
-        availableTokens = _availableTokens;
-        limitTokensPerUser = _limitTokensPerUser;
-
-        startAt = block.timestamp;
-        endsAt = startAt + 5 weeks;
-        vestingEnd = _vestingEnd;
 
         tokenPrice = _tokenPrice;
         aggregatorInterface = AggregatorV3Interface(address(_priceFeed));
@@ -80,11 +67,11 @@ contract TokenSale is Ownable {
         return token.balanceOf(address(this));
     }
 
-    function ethBalance() external view returns (uint) {
+    function ethBalance() public view returns (uint) {
         return address(this).balance;
     }
 
-    function usdtBalance() external view returns (uint) {
+    function usdtBalance() public view returns (uint) {
         return usdt.balanceOf(address(this));
     }
 
@@ -141,7 +128,7 @@ contract TokenSale is Ownable {
 
     function claimToken(address _holder) public {
         require(
-            block.timestamp >= vestingEnd,
+            block.timestamp > vestingEnd,
             "token claim will be allowed after 2024-12-31"
         );
 
@@ -154,11 +141,19 @@ contract TokenSale is Ownable {
         emit Claimed(_userTokens, _holder);
     }
 
-    function withdraw(uint256 amount) external onlyOwner {
-        require(address(this).balance >= amount, "Insufficient balance");
+    function withdrawETH(uint256 amount) external onlyOwner {
+        require(address(this).balance >= amount, "insufficient ETH balance");
 
-        address owner = owner();
+        address payable owner = payable(owner());
 
-        payable(owner).transfer(amount);
+        owner.transfer(amount);
+    }
+
+    function withdrawUSDT(uint amount) external onlyOwner {
+        require(usdtBalance() >= amount, "insufficient USDT balance");
+
+        address payable owner = payable(owner());
+
+        usdt.transfer(owner, amount);
     }
 }
