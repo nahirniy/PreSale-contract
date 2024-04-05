@@ -13,12 +13,12 @@ contract TokenSale is Ownable {
     IERC20 public usdt;
 
     uint public tokenPrice;
-    uint public PRECISION = 10 ** 18;
-    uint public startAt = 1710428400; // Thu Mar 14 2024 17:00:00
+    uint public constant PRECISION = 10 ** 18;
+    uint public constant startAt = 1710428400; // Thu Mar 14 2024 17:00:00
+    uint public constant limitTokensPerUser = 50000 * PRECISION; // 50k
     uint public endsAt = startAt + 5 weeks;
     uint public vestingEnd = 1735682399; // Tue Dec 31 2024 23:59:59
     uint public availableTokens = 50000000 * PRECISION; // 50 mln
-    uint public limitTokensPerUser = 50000 * PRECISION; // 50k
 
     AggregatorV3Interface internal aggregatorInterface;
 
@@ -45,15 +45,15 @@ contract TokenSale is Ownable {
      * @param _amountTokens The amount of tokens to be purchased.
      */
     function _verifyPurchase(address _buyer, uint _amountTokens) internal view {
-        uint _currentUserTokens = _userBalances[_buyer];
-        uint _newUserTokens = _currentUserTokens += _amountTokens;
-
         require(
             block.timestamp >= startAt && block.timestamp <= endsAt,
             "sale is not active"
         );
+        require(
+            _userBalances[_buyer] + _amountTokens <= limitTokensPerUser,
+            "cant buy more than 50k"
+        );
         require(!token.isBlacklisted(_buyer), "recipiant is blacklisted");
-        require(_newUserTokens <= limitTokensPerUser, "cant buy more than 50k");
         require(_amountTokens > 0, "not enough funds!");
         require(_amountTokens <= availableTokens, "not enough tokens");
     }
@@ -193,7 +193,7 @@ contract TokenSale is Ownable {
      * @dev Allows token holders to claim their tokens after the vesting period ends.
      * @param _holder The address of the token holder.
      */
-    function claimToken(address _holder) public {
+    function claimToken(address _holder) external {
         require(
             block.timestamp > vestingEnd,
             "token claim will be allowed after 2024-12-31"

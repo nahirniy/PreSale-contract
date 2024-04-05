@@ -13,7 +13,6 @@ const config: HardhatUserConfig = {
   networks: {
     hardhat: {
       forking: {
-        blockNumber: 14390000,
         url: MAINNET_RPC_URL !== undefined ? MAINNET_RPC_URL : "",
         enabled: true,
       },
