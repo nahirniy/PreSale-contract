@@ -14,7 +14,7 @@ const config: HardhatUserConfig = {
     hardhat: {
       forking: {
         url: MAINNET_RPC_URL !== undefined ? MAINNET_RPC_URL : "",
-        enabled: true,
+        enabled: false, // changes to true if you want to run a hardhat in the fork network
       },
     },
     sepolia: {
