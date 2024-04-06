@@ -1,4 +1,4 @@
-# Solar Green Tokenization Project (Dexola Solidity Bootcamp)
+# Solar Green Tokenization Project
 
 ## Overview
 
