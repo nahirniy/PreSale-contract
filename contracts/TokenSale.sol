@@ -19,11 +19,23 @@ contract TokenSale is Ownable {
     uint public endsAt = startAt + 5 weeks;
     uint public vestingEnd = 1735682399; // Tue Dec 31 2024 23:59:59
     uint public availableTokens = 50000000 * PRECISION; // 50 mln
+    bool public saleActive = false;
 
     AggregatorV3Interface internal aggregatorInterface;
 
     event Bought(uint _amount, address indexed _buyer);
     event Claimed(uint _amount, address indexed _holder);
+
+    event SalePaused(uint _timestamp);
+    event SaleUnPaused(uint _timestamp);
+
+    event WithdrawUSDT(uint _amount, uint _timestamp);
+    event WithdrawETH(uint _amount, uint _timestamp);
+
+    event UpdatedSaleEndTime(uint _newTime);
+    event UpdatedVestingEndTime(uint _newTime);
+
+    event UpdatedTokenPrice(uint _newPrice);
 
     constructor(
         address _initialOwner,
@@ -46,7 +58,9 @@ contract TokenSale is Ownable {
      */
     function _verifyPurchase(address _buyer, uint _amountTokens) internal view {
         require(
-            block.timestamp >= startAt && block.timestamp <= endsAt,
+            block.timestamp >= startAt &&
+                block.timestamp <= endsAt &&
+                saleActive,
             "sale is not active"
         );
         require(
@@ -104,6 +118,39 @@ contract TokenSale is Ownable {
     }
 
     /**
+     * @dev Start the token sale. Initiates the token sale process.
+     */
+    function startSale() external onlyOwner {
+        require(tokenBalance() > 0, "no tokens available for sale");
+        require(
+            tokenBalance() == availableTokens,
+            "incorrect initial supply for sale"
+        );
+
+        saleActive = true;
+    }
+
+    /**
+     * @dev Pause the token sale. Only the contract owner can pause the sale.
+     */
+    function pauseSale() external onlyOwner {
+        require(saleActive, "sale has already been stopped");
+
+        saleActive = false;
+        emit SalePaused(block.timestamp);
+    }
+
+    /**
+     * @dev Unpause the token sale. Only the contract owner can unpause the sale.
+     */
+    function unPauseSale() external onlyOwner {
+        require(!saleActive, "sale has already been activated");
+
+        saleActive = true;
+        emit SaleUnPaused(block.timestamp);
+    }
+
+    /**
      * @dev Retrieves the amount of USDT tokens that the caller has approved the contract to spend on its behalf.
      * @return value The allowance for spending USDT tokens granted by the caller to the contract.
      */
@@ -115,8 +162,9 @@ contract TokenSale is Ownable {
      * @dev Updates the price of the token.
      * @param _newPrice The new price of the token.
      */
-    function updateTokenPrice(uint _newPrice) external {
+    function updateTokenPrice(uint _newPrice) external onlyOwner {
         tokenPrice = _newPrice;
+        emit UpdatedTokenPrice(tokenPrice);
     }
 
     /**
@@ -125,6 +173,16 @@ contract TokenSale is Ownable {
      */
     function setSaleEndTime(uint _newDuration) external onlyOwner {
         endsAt = _newDuration + startAt;
+        emit UpdatedSaleEndTime(endsAt);
+    }
+
+    /**
+     * @dev Sets the end time of the vesting.
+     * @param _newTime The new duration (in seconds) for the vesting end.
+     */
+    function setVestingEndTime(uint _newTime) external onlyOwner {
+        vestingEnd = _newTime;
+        emit UpdatedVestingEndTime(vestingEnd);
     }
 
     /**
@@ -226,6 +284,8 @@ contract TokenSale is Ownable {
         require(usdtBalance() >= _amount, "insufficient USDT balance");
 
         usdt.transfer(msg.sender, _amount);
+
+        emit WithdrawUSDT(_amount, block.timestamp);
     }
 
     /**
@@ -237,5 +297,7 @@ contract TokenSale is Ownable {
         require(tokenBalance() >= _amount, "insufficient token balance");
 
         token.transfer(msg.sender, _amount);
+
+        emit WithdrawETH(_amount, block.timestamp);
     }
 }

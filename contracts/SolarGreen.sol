@@ -28,7 +28,7 @@ contract SolarGreen is ERC20, AccessControl {
      * @param to The address where the newly minted tokens will be allocated.
      * @param amount The amount of tokens to mint.
      */
-    function mint(address to, uint256 amount) public onlyRole(ADMIN) {
+    function mint(address to, uint256 amount) external onlyRole(ADMIN) {
         _mint(to, amount);
     }
 
@@ -36,7 +36,7 @@ contract SolarGreen is ERC20, AccessControl {
      * @dev Burn tokens from the contract's balance.
      * @param value The amount of tokens to burn.
      */
-    function burn(uint value) public onlyRole(ADMIN) {
+    function burn(uint value) external onlyRole(ADMIN) {
         _burn(address(this), value);
     }
 
@@ -44,7 +44,7 @@ contract SolarGreen is ERC20, AccessControl {
      *@dev Assigns the role of a blacklister to a new address, granting authority to add addresses to the blacklist.
      *@param _newBlacklister The address to be assigned the role of a blacklister.
      */
-    function addBlacklister(address _newBlacklister) public onlyRole(ADMIN) {
+    function addBlacklister(address _newBlacklister) external onlyRole(ADMIN) {
         _grantRole(BLACKLISTER, _newBlacklister);
     }
 
@@ -52,7 +52,7 @@ contract SolarGreen is ERC20, AccessControl {
      * @dev Removes the role of a blacklister from a specified address, thereby revoking their authority to manage the blacklist.
      * @param _blacklister The address from which to remove the role of blacklister.
      */
-    function removeBlacklister(address _blacklister) public onlyRole(ADMIN) {
+    function removeBlacklister(address _blacklister) external onlyRole(ADMIN) {
         _revokeRole(BLACKLISTER, _blacklister);
     }
 
@@ -60,7 +60,7 @@ contract SolarGreen is ERC20, AccessControl {
      * @dev Adds the specified address to the blacklist.
      * @param _to The address to be added to the blacklist.
      */
-    function addToBlacklist(address _to) public onlyRole(BLACKLISTER) {
+    function addToBlacklist(address _to) external onlyRole(BLACKLISTER) {
         _blacklist[_to] = true;
     }
 
@@ -68,7 +68,7 @@ contract SolarGreen is ERC20, AccessControl {
      * @dev Removes the specified address from the blacklist.
      * @param _to The address to be removed from the blacklist.
      */
-    function removeFromBlacklist(address _to) public onlyRole(BLACKLISTER) {
+    function removeFromBlacklist(address _to) external onlyRole(BLACKLISTER) {
         _blacklist[_to] = false;
     }
 
@@ -77,7 +77,7 @@ contract SolarGreen is ERC20, AccessControl {
      * @param _to The address to be checked.
      * @return Whether the address is blacklisted or not.
      */
-    function isBlacklisted(address _to) public view returns (bool) {
+    function isBlacklisted(address _to) external view returns (bool) {
         return _blacklist[_to];
     }
 }
