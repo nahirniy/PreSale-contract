@@ -24,14 +24,14 @@ contract SolarGreen is ERC20, AccessControl {
 
     /**
      * @dev Mint new tokens and allocate them to a specified account.
-     * @param to The address where the newly minted tokens will be allocated.
-     * @param amount The amount of tokens to mint.
+     * @param _to The address where the newly minted tokens will be allocated.
+     * @param _amount The amount of tokens to mint.
      */
     function mint(
-        address to,
-        uint256 amount
+        address _to,
+        uint256 _amount
     ) external onlyRole(DEFAULT_ADMIN_ROLE) {
-        _mint(to, amount);
+        _mint(_to, _amount);
     }
 
     /**
@@ -64,26 +64,28 @@ contract SolarGreen is ERC20, AccessControl {
 
     /**
      * @dev Adds the specified address to the blacklist.
-     * @param _to The address to be added to the blacklist.
+     * @param _address The address to be added to the blacklist.
      */
-    function addToBlacklist(address _to) external onlyRole(BLACKLISTER) {
-        _blacklist[_to] = true;
+    function addToBlacklist(address _address) external onlyRole(BLACKLISTER) {
+        _blacklist[_address] = true;
     }
 
     /**
      * @dev Removes the specified address from the blacklist.
-     * @param _to The address to be removed from the blacklist.
+     * @param _address The address to be removed from the blacklist.
      */
-    function removeFromBlacklist(address _to) external onlyRole(BLACKLISTER) {
-        _blacklist[_to] = false;
+    function removeFromBlacklist(
+        address _address
+    ) external onlyRole(BLACKLISTER) {
+        _blacklist[_address] = false;
     }
 
     /**
      * @dev Checks if the specified address is blacklisted.
-     * @param _to The address to be checked.
+     * @param _address The address to be checked.
      * @return Whether the address is blacklisted or not.
      */
-    function isBlacklisted(address _to) external view returns (bool) {
-        return _blacklist[_to];
+    function isBlacklisted(address _address) external view returns (bool) {
+        return _blacklist[_address];
     }
 }

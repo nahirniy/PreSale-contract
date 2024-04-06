@@ -77,7 +77,7 @@ contract TokenSale is Ownable {
      * @param _buyer The address of the buyer.
      * @param _amountTokens The amount of tokens to be purchased.
      */
-    function _tokenPurchase(address _buyer, uint _amountTokens) internal {
+    function _tokenPurchase(address _buyer, uint _amountTokens) private {
         availableTokens -= _amountTokens;
         _userBalances[_buyer] += _amountTokens;
 
