@@ -19,7 +19,7 @@ describe("SolarGreen", function () {
   it("owner must be admin", async function () {
     const { owner, token } = await loadFixture(deploy);
 
-    expect(await token.hasRole(await token.ADMIN(), owner.address)).to.be.true;
+    expect(await token.hasRole(await token.DEFAULT_ADMIN_ROLE(), owner.address)).to.be.true;
     expect(await token.getAddress()).to.be.properAddress;
   });
 

@@ -11,13 +11,10 @@
   "license": "ISC",
   "devDependencies": {
     "@nomicfoundation/hardhat-toolbox": "^5.0.0",
-    "@types/sinon": "^17.0.3",
-    "hardhat": "^2.22.2",
-    "sinon": "^17.0.1"
+    "hardhat": "^2.22.2"
   },
   "dependencies": {
     "@chainlink/contracts": "^0.8.0",
-    "@ethersproject/bignumber": "^5.7.0",
     "@openzeppelin/contracts": "^5.0.2",
     "dotenv": "^16.4.5"
   }

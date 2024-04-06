@@ -6,7 +6,6 @@ import "@openzeppelin/contracts/token/ERC20/extensions/ERC20Burnable.sol";
 import "@openzeppelin/contracts/access/AccessControl.sol";
 
 contract SolarGreen is ERC20, AccessControl {
-    bytes32 public constant ADMIN = keccak256("ADMIN");
     bytes32 public constant BLACKLISTER = keccak256("BLACKLISTER");
 
     uint public initiallySupply = 100000000 ether;
@@ -17,7 +16,7 @@ contract SolarGreen is ERC20, AccessControl {
         address _owner,
         address _blacklister
     ) ERC20("Solar Green", "SGR") {
-        _grantRole(ADMIN, _owner);
+        _grantRole(DEFAULT_ADMIN_ROLE, _owner);
         _grantRole(BLACKLISTER, _blacklister);
 
         _mint(address(this), 50000000 ether);
@@ -28,7 +27,10 @@ contract SolarGreen is ERC20, AccessControl {
      * @param to The address where the newly minted tokens will be allocated.
      * @param amount The amount of tokens to mint.
      */
-    function mint(address to, uint256 amount) external onlyRole(ADMIN) {
+    function mint(
+        address to,
+        uint256 amount
+    ) external onlyRole(DEFAULT_ADMIN_ROLE) {
         _mint(to, amount);
     }
 
@@ -36,7 +38,7 @@ contract SolarGreen is ERC20, AccessControl {
      * @dev Burn tokens from the contract's balance.
      * @param value The amount of tokens to burn.
      */
-    function burn(uint value) external onlyRole(ADMIN) {
+    function burn(uint value) external onlyRole(DEFAULT_ADMIN_ROLE) {
         _burn(address(this), value);
     }
 
@@ -44,7 +46,9 @@ contract SolarGreen is ERC20, AccessControl {
      *@dev Assigns the role of a blacklister to a new address, granting authority to add addresses to the blacklist.
      *@param _newBlacklister The address to be assigned the role of a blacklister.
      */
-    function addBlacklister(address _newBlacklister) external onlyRole(ADMIN) {
+    function addBlacklister(
+        address _newBlacklister
+    ) external onlyRole(DEFAULT_ADMIN_ROLE) {
         _grantRole(BLACKLISTER, _newBlacklister);
     }
 
@@ -52,7 +56,9 @@ contract SolarGreen is ERC20, AccessControl {
      * @dev Removes the role of a blacklister from a specified address, thereby revoking their authority to manage the blacklist.
      * @param _blacklister The address from which to remove the role of blacklister.
      */
-    function removeBlacklister(address _blacklister) external onlyRole(ADMIN) {
+    function removeBlacklister(
+        address _blacklister
+    ) external onlyRole(DEFAULT_ADMIN_ROLE) {
         _revokeRole(BLACKLISTER, _blacklister);
     }
 

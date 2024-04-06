@@ -18,6 +18,7 @@ async function main() {
   shop.waitForDeployment();
 
   await token.mint(shop.target, tokensForPurchase);
+  await shop.startSale();
 
   console.log("TokenSale address: ", shop.target);
   console.log("SolarGreen address: ", token.target);
