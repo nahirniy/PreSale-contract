@@ -6,32 +6,32 @@ describe("TokenSale", function () {
   async function deploy() {
     const [owner, buyer, spender] = await ethers.getSigners();
 
-    const DECIMALS = "18";
+    const DECIMALS = 18;
     const INITIAL_PRICE = "360000000000"; // 3600$ ETH/USDT
-    const tokenPrice = ethers.parseUnits("7", 16); // 0.07$ per token
+    const tokenPrice = ethers.parseUnits("7", 16); // 0.07$ 
     const tokensForPurchase = ethers.parseUnits("50000000", 18);
 
     const mockV3AggregatorFactory = await ethers.getContractFactory("MockV3Aggregator");
     const mockV3Aggregator = await mockV3AggregatorFactory.deploy(DECIMALS, INITIAL_PRICE);
-    mockV3Aggregator.waitForDeployment();
+    await mockV3Aggregator.waitForDeployment();
 
     const Tether = await ethers.getContractFactory("TestUSTD");
     const usdt = await Tether.deploy();
-    usdt.waitForDeployment();
+    await usdt.waitForDeployment();
 
     const SolarGreen = await ethers.getContractFactory("SolarGreen", owner);
-    const token = await SolarGreen.deploy(owner.address, owner.address);
-    token.waitForDeployment();
+    const token = await SolarGreen.deploy(owner.address);
+    await token.waitForDeployment();
 
     const TokenSale = await ethers.getContractFactory("TokenSale", owner);
     const shop = await TokenSale.deploy(
-      owner,
+      owner.address,
       usdt.target,
       mockV3Aggregator.target,
       token.target,
       tokenPrice
     );
-    shop.waitForDeployment();
+    await shop.waitForDeployment();
 
     await token.mint(shop.target, tokensForPurchase);
     await shop.startSale();
@@ -39,15 +39,15 @@ describe("TokenSale", function () {
     return { owner, buyer, spender, shop, token, usdt };
   }
 
-  it("should have an owner", async function () {
+  it("повинен мати власника", async function () {
     const { owner, shop } = await loadFixture(deploy);
 
-    expect(await shop.owner()).to.eq(owner.address);
-    expect(await shop.getAddress()).to.be.properAddress;
+    expect(await shop.owner()).to.equal(owner.address);
+    expect(shop.target).to.properAddress;
   });
 
-  describe("Possibility to stop the sale", function () {
-    it("should allow the owner to start the token sale", async () => {
+  describe("Allowing to stop the sale", function () {
+    it("should allow the owner to start the sale", async () => {
       const { shop } = await loadFixture(deploy);
 
       await shop.startSale();
@@ -55,7 +55,7 @@ describe("TokenSale", function () {
       expect(isSaleActive).to.be.true;
     });
 
-    it("should allow the owner to pause the token sale", async () => {
+    it("should allow the owner to pause the sale", async () => {
       const { shop } = await loadFixture(deploy);
 
       await shop.pauseSale();
@@ -63,7 +63,7 @@ describe("TokenSale", function () {
       expect(isSaleActive).to.be.false;
     });
 
-    it("should allow the owner to unpause the token sale", async () => {
+    it("should allow the owner to resume the sale", async () => {
       const { shop } = await loadFixture(deploy);
 
       await shop.pauseSale();
@@ -73,296 +73,290 @@ describe("TokenSale", function () {
     });
   });
 
-  describe("Correct work change token price, vesting, sale end, helper func", function () {
-    it("correct work function that canculate eth and usdt amount for token", async function () {
+  describe("Correct work of changing the token price, vesting, sale end time, auxiliary functions", function () {
+    it("correct work of the function that calculates the number of ETH and USDT for the token", async function () {
       const { shop } = await loadFixture(deploy);
 
-      const tokenPrice = ethers.parseUnits("7", 16); // 0.07$ per token
-      const precision = ethers.parseUnits("1", 18);
       const tokenAmount = ethers.parseUnits("700", 18);
       const ethPrice = await shop.getLatestPrice();
 
-      const usdtAmount = (tokenAmount * tokenPrice) / precision;
-      const ethAmount = (usdtAmount * precision) / ethPrice;
+      const usdtAmount = (tokenAmount * await shop.saleTokenPrice()) / ethers.parseUnits("1", 18);
+      const ethAmount = (usdtAmount * ethers.parseUnits("1", 18)) / ethPrice;
 
-      expect(await shop.usdtBuyHelper(tokenAmount)).to.eq(usdtAmount);
-      expect(await shop.ethBuyHelper(tokenAmount)).to.eq(ethAmount);
+      expect(await shop.getPurchaseTokenAmount(tokenAmount)).to.equal(usdtAmount);
+      expect(await shop.getNativeTokenAmount(tokenAmount)).to.equal(ethAmount);
     });
 
-    it("correct work of ustd, token, and ether balances", async function () {
+    it("correct work of USDT, tokens and ETH balances", async function () {
       const { buyer, shop, usdt, token } = await loadFixture(deploy);
 
       const tokenAmount = ethers.parseUnits("100", 18);
-      const usdtAmount = await shop.usdtBuyHelper(tokenAmount);
-      const ethAmount = await shop.ethBuyHelper(tokenAmount);
-      const sumTokenAmount = tokenAmount + tokenAmount;
-
-      const txData = { value: ethAmount };
+      const usdtAmount = await shop.getPurchaseTokenAmount(tokenAmount);
+      const ethAmount = await shop.getNativeTokenAmount(tokenAmount);
+      const sumTokenAmount = tokenAmount * 2n;
 
       await usdt.connect(buyer).mint();
       await usdt.connect(buyer).approve(shop.target, usdtAmount);
-      await shop.connect(buyer).buyWithUSDT(tokenAmount);
-      await shop.connect(buyer).buyWithEth(tokenAmount, txData);
+      await shop.connect(buyer).buyWithERC20(tokenAmount);
 
-      expect(await shop.checkUserBalance(buyer.address)).to.eq(sumTokenAmount);
-      expect(await shop.ethBalance()).to.eq(ethAmount);
-      expect(await shop.usdtBalance()).to.eq(usdtAmount);
-      expect(await token.balanceOf(shop.target)).to.eq(await shop.tokenBalance()); // since token in the vesting
+      const txData = { value: ethAmount };
+      await shop.connect(buyer).buyWithNative(tokenAmount, txData);
+
+      expect(await shop.userBalances(buyer.address)).to.equal(sumTokenAmount);
+      expect(await shop.availableSaleTokens()).to.equal(ethers.parseUnits("50000000", 18) - sumTokenAmount);
+      expect(await usdt.balanceOf(shop.target)).to.equal(usdtAmount);
+      expect(await token.balanceOf(shop.target)).to.equal(ethers.parseUnits("50000000", 18) - sumTokenAmount);
     });
 
-    it("correct update token price", async function () {
+    it("correct update of the token price", async function () {
       const { buyer, shop, usdt } = await loadFixture(deploy);
 
       const newPrice = ethers.parseUnits("1", 18); // 1$
-      await shop.updateTokenPrice(newPrice);
+      await shop.updateSaleTokenPrice(newPrice);
       const tokenAmount = ethers.parseUnits("100", 18);
-      const usdtAmount = await shop.usdtBuyHelper(tokenAmount);
+      const usdtAmount = await shop.getPurchaseTokenAmount(tokenAmount);
 
       await usdt.connect(buyer).mint();
       await usdt.connect(buyer).approve(shop.target, usdtAmount);
-      await shop.connect(buyer).buyWithUSDT(tokenAmount);
+      await shop.connect(buyer).buyWithERC20(tokenAmount);
 
-      expect(await shop.checkUserBalance(buyer.address)).to.eq(tokenAmount);
-      expect(await shop.usdtBalance()).to.eq(usdtAmount);
+      expect(await shop.userBalances(buyer.address)).to.equal(tokenAmount);
+      expect(await usdt.balanceOf(shop.target)).to.equal(usdtAmount);
     });
 
-    it("correct update end time of sale", async function () {
+    it("correct update of the sale end time", async function () {
       const { shop } = await loadFixture(deploy);
 
       const duration = 1000;
 
-      const expectedSaleEndTime = (await shop.startAt()) + BigInt(1000);
+      const expectedSaleEndTime = (await shop.startAt()) + BigInt(duration);
 
-      const updateEndTime = await shop.setSaleEndTime(duration);
+      const tx = await shop.setSaleEndTime(duration);
 
-      expect(await shop.endsAt()).to.eq(expectedSaleEndTime);
-      expect(updateEndTime).to.emit(shop, "UpdatedSaleEndTime").withArgs(expectedSaleEndTime);
+      expect(await shop.endsAt()).to.equal(expectedSaleEndTime);
+      await expect(tx).to.emit(shop, "UpdatedSaleEndTime").withArgs(expectedSaleEndTime);
     });
 
-    it("correct update end time of vesting", async function () {
+    it("correct update of the vesting end time", async function () {
       const { shop } = await loadFixture(deploy);
 
-      const duration = 1000;
+      const newTime = 1000;
 
-      const expectedVestingEndTime = (await shop.vestingEnd()) + BigInt(1000);
+      const expectedVestingEndTime = (await shop.vestingEnd()) + BigInt(newTime);
 
-      const updateEndTime = await shop.setVestingEndTime(expectedVestingEndTime);
+      const tx = await shop.setVestingEndTime(newTime);
 
-      expect(await shop.vestingEnd()).to.eq(expectedVestingEndTime);
-      expect(updateEndTime).to.emit(shop, "UpdatedVestingEndTime").withArgs(expectedVestingEndTime);
+      expect(await shop.vestingEnd()).to.equal(expectedVestingEndTime);
+      await expect(tx).to.emit(shop, "UpdatedVestingEndTime").withArgs(expectedVestingEndTime);
     });
   });
 
-  describe("Allow to buy tokens", function () {
-    it("allow to buy for Eth", async function () {
+  describe("Allowing to buy tokens", function () {
+    it("allows to buy with ETH", async function () {
       const { buyer, shop } = await loadFixture(deploy);
 
       const tokenAmount = ethers.parseUnits("100", 18);
-      const ethAmount = await shop.ethBuyHelper(tokenAmount);
+      const ethAmount = await shop.getNativeTokenAmount(tokenAmount);
 
       const txData = { value: ethAmount };
 
-      const tx = await shop.connect(buyer).buyWithEth(tokenAmount, txData);
-      tx.wait();
+      const tx = await shop.connect(buyer).buyWithNative(tokenAmount, txData);
+      await tx.wait();
 
-      expect(tx).to.emit(shop, "Bought").withArgs(tokenAmount, buyer.address);
-      expect(() => tx).to.changeEtherBalance(shop, tokenAmount);
-      expect(await shop.checkUserBalance(buyer.address)).to.eq(tokenAmount);
+      await expect(tx).to.emit(shop, "Bought").withArgs(tokenAmount, buyer.address);
+      expect(await shop.userBalances(buyer.address)).to.equal(tokenAmount);
+      expect(await ethers.provider.getBalance(shop.target)).to.equal(ethAmount);
     });
 
-    it("allow to buy for USTD", async function () {
+    it("allows to buy with USDT", async function () {
       const { buyer, shop, usdt } = await loadFixture(deploy);
 
       const tokenAmount = ethers.parseUnits("100", 18);
-      const usdtAmount = await shop.usdtBuyHelper(tokenAmount);
+      const usdtAmount = await shop.getPurchaseTokenAmount(tokenAmount);
 
       await usdt.connect(buyer).mint();
       await usdt.connect(buyer).approve(shop.target, usdtAmount);
 
-      const tx = await shop.connect(buyer).buyWithUSDT(tokenAmount);
-      tx.wait();
+      const tx = await shop.connect(buyer).buyWithERC20(tokenAmount);
+      await tx.wait();
 
-      expect(tx).to.emit(shop, "Bought").withArgs(tokenAmount, buyer.address);
-      expect(await shop.checkUserBalance(buyer.address)).to.eq(tokenAmount);
+      await expect(tx).to.emit(shop, "Bought").withArgs(tokenAmount, buyer.address);
+      expect(await shop.userBalances(buyer.address)).to.equal(tokenAmount);
       expect(await usdt.balanceOf(shop.target)).to.equal(usdtAmount);
     });
   });
 
-  describe("Check main condition for purchase", function () {
-    it("can't buy more than 50k token", async function () {
+  describe("Checking the main conditions for purchase", function () {
+    it("cannot buy more than 50k tokens", async function () {
       const { buyer, shop } = await loadFixture(deploy);
 
-      const tokenAmount = ethers.parseUnits("30000", 18);
-      const ethAmount = await shop.ethBuyHelper(tokenAmount);
+      const tokenAmount = ethers.parseUnits("50001", 18);
+      const ethAmount = await shop.getNativeTokenAmount(tokenAmount);
 
       const txData = { value: ethAmount };
 
-      const tx = await shop.connect(buyer).buyWithEth(tokenAmount, txData);
-      tx.wait();
-
-      await expect(shop.connect(buyer).buyWithEth(tokenAmount, txData)).to.be.revertedWith(
-        "cant buy more than 50k"
-      );
+      await expect(
+        shop.connect(buyer).buyWithNative(tokenAmount, txData)
+      ).to.be.revertedWithCustomError(shop, "LimitExceeded");
     });
 
-    it("can't buy less than 1 token", async function () {
+    it("cannot buy less than 1 token", async function () {
       const { buyer, shop } = await loadFixture(deploy);
       const tokenAmount = ethers.parseUnits("0", 18);
-      const ethAmount = await shop.ethBuyHelper(tokenAmount);
+      const ethAmount = await shop.getNativeTokenAmount(tokenAmount);
 
       const txData = { value: ethAmount };
 
-      await expect(shop.connect(buyer).buyWithEth(tokenAmount, txData)).to.be.revertedWith(
-        "not enough funds!"
-      );
+      await expect(
+        shop.connect(buyer).buyWithNative(tokenAmount, txData)
+      ).to.be.revertedWithCustomError(shop, "InvalidAmount");
     });
 
-    it("can't buy token after end of token sale", async function () {
+    it("cannot buy tokens after the sale ends", async function () {
       const { buyer, shop } = await loadFixture(deploy);
 
       const tokenAmount = ethers.parseUnits("30000", 18);
-      const ethAmount = await shop.ethBuyHelper(tokenAmount);
+      const ethAmount = await shop.getNativeTokenAmount(tokenAmount);
 
       const txData = { value: ethAmount };
 
       await shop.setSaleEndTime(0);
 
-      await expect(shop.connect(buyer).buyWithEth(tokenAmount, txData)).to.be.revertedWith(
-        "sale is not active"
-      );
+      await expect(
+        shop.connect(buyer).buyWithNative(tokenAmount, txData)
+      ).to.be.revertedWithCustomError(shop, "SaleNotActive");
     });
 
-    it("can't buy token if address in blacklist", async function () {
+    it("cannot buy tokens if the address is in the blacklist", async function () {
       const { buyer, shop, token } = await loadFixture(deploy);
 
       await token.addToBlacklist(buyer.address);
 
       const tokenAmount = ethers.parseUnits("100", 18);
-      const ethAmount = await shop.ethBuyHelper(tokenAmount);
+      const ethAmount = await shop.getNativeTokenAmount(tokenAmount);
 
       const txData = { value: ethAmount };
 
-      expect(await token.isBlacklisted(buyer.address)).to.eq(true);
-      await expect(shop.connect(buyer).buyWithEth(tokenAmount, txData)).to.be.revertedWith(
-        "recipiant is blacklisted"
-      );
+      expect(await token.blacklist(buyer.address)).to.be.true;
+
+      await expect(
+        shop.connect(buyer).buyWithNative(tokenAmount, txData)
+      ).to.be.revertedWithCustomError(shop, "SaleNotActive");
     });
   });
 
-  describe("Check token claim functionality", function () {
-    it("can claim token after vesting period", async function () {
+  describe("Checking the functionality of claiming tokens", function () {
+    it("can claim tokens after the vesting period ends", async function () {
       const { buyer, shop, token } = await loadFixture(deploy);
 
       const tokenAmount = ethers.parseUnits("100", 18);
-      const ethAmount = await shop.ethBuyHelper(tokenAmount);
+      const ethAmount = await shop.getNativeTokenAmount(tokenAmount);
       const txData = { value: ethAmount };
 
-      const txBuy = await shop.connect(buyer).buyWithEth(tokenAmount, txData);
-      txBuy.wait();
+      const txBuy = await shop.connect(buyer).buyWithNative(tokenAmount, txData);
+      await txBuy.wait();
 
-      const timeAfterVesting = Number(await shop.vestingEnd()) + 1000;
+      const timeAfterVesting = (await shop.vestingEnd()) + 1000n;
       await ethers.provider.send("evm_setNextBlockTimestamp", [timeAfterVesting]);
-      await ethers.provider.send("evm_mine");
+      await ethers.provider.send("evm_mine", []);
 
-      const txClaim = await shop.claimToken(buyer.address);
-      txClaim.wait();
+      const txClaim = await shop.claimTokens(buyer.address);
+      await txClaim.wait();
 
-      expect(() => txBuy).to.changeEtherBalance(shop, tokenAmount);
-      expect(await shop.checkUserBalance(buyer.address)).to.eq(0);
-      expect(await shop.ethBalance()).to.eq(ethAmount);
-      expect(await token.balanceOf(buyer.address)).to.eq(tokenAmount);
-      expect(await token.balanceOf(shop.target)).to.eq(await shop.availableTokens());
-      expect(txClaim).to.emit(shop, "Claimed").withArgs(tokenAmount, buyer.address);
+      expect(await shop.userBalances(buyer.address)).to.equal(0);
+      expect(await token.balanceOf(buyer.address)).to.equal(tokenAmount);
+      expect(await token.balanceOf(shop.target)).to.equal(ethers.parseUnits("50000000", 18) - tokenAmount);
+      await expect(txClaim).to.emit(shop, "Claimed").withArgs(tokenAmount, buyer.address);
     });
 
-    it("cant claim token during vesting period", async function () {
+    it("Cannot claim tokens during the vesting period", async function () {
       const { buyer, shop } = await loadFixture(deploy);
 
       const tokenAmount = ethers.parseUnits("100", 18);
-      const ethAmount = await shop.ethBuyHelper(tokenAmount);
+      const ethAmount = await shop.getNativeTokenAmount(tokenAmount);
       const txData = { value: ethAmount };
 
-      await shop.connect(buyer).buyWithEth(tokenAmount, txData);
+      await shop.connect(buyer).buyWithNative(tokenAmount, txData);
 
-      await expect(shop.claimToken(buyer.address)).to.be.revertedWith(
-        "token claim will be allowed after 2024-12-31"
-      );
+      await expect(
+        shop.claimTokens(buyer.address)
+      ).to.be.revertedWithCustomError(shop, "VestingNotEnded");
     });
   });
 
-  describe("Withdraw usdt, eth, token from contract", function () {
-    it("only owner can withdraw ether from contract", async function () {
+  describe("Withdrawing USDT, ETH, tokens from the contract", function () {
+    it("Only owner can withdraw ETH", async function () {
       const { owner, buyer, shop } = await loadFixture(deploy);
 
       const tokenAmount = ethers.parseUnits("100", 18);
-      const ethAmount = await shop.ethBuyHelper(tokenAmount);
+      const ethAmount = await shop.getNativeTokenAmount(tokenAmount);
       const txData = { value: ethAmount };
 
-      const txBuy = await shop.connect(buyer).buyWithEth(tokenAmount, txData);
-      txBuy.wait();
+      await shop.connect(buyer).buyWithNative(tokenAmount, txData);
 
       const beforeBalance = await ethers.provider.getBalance(owner.address);
 
-      const txWithdraw = await shop.connect(owner).withdrawETH(ethAmount);
-      txWithdraw.wait();
+      const txWithdraw = await shop.connect(owner).withdrawAllNativeToken();
+      await txWithdraw.wait();
 
       const afterBalance = await ethers.provider.getBalance(owner.address);
 
-      expect(await shop.ethBalance()).to.eq(0);
-      expect(beforeBalance).to.be.at.most(afterBalance);
-      await expect(shop.connect(owner).withdrawETH("1")).to.be.revertedWith("insufficient ETH balance");
+      expect(await shop.saleActive()).to.be.true;
+      await expect(
+        shop.connect(owner).withdrawNativeToken(owner.address, ethers.parseUnits("1", 18))
+      ).to.be.revertedWithCustomError(shop, "InsufficientBalance");
 
-      await shop.connect(buyer).buyWithEth(tokenAmount, txData);
-      await expect(shop.connect(buyer).withdrawETH(ethAmount)).to.be.reverted;
+      await expect(
+        shop.connect(buyer).withdrawNativeToken(owner.address, ethAmount)
+      ).to.be.reverted;
     });
 
-    it("only owner can withdraw usdt from contract", async function () {
+    it("Only owner can withdraw USDT", async function () {
       const { owner, buyer, shop, usdt } = await loadFixture(deploy);
 
       const tokenAmount = ethers.parseUnits("100", 18);
-      const usdtAmount = await shop.usdtBuyHelper(tokenAmount);
+      const usdtAmount = await shop.getPurchaseTokenAmount(tokenAmount);
 
       await usdt.connect(buyer).mint();
       await usdt.connect(buyer).approve(shop.target, usdtAmount * BigInt(2));
 
-      const txBuy = await shop.connect(buyer).buyWithUSDT(tokenAmount);
-      txBuy.wait();
+      await shop.connect(buyer).buyWithERC20(tokenAmount);
+      await shop.connect(owner).withdrawAllPurchaseToken();
 
-      const beforeBalance = await usdt.balanceOf(owner.address);
+      expect(await shop.saleActive()).to.be.true; 
+      await expect(
+        shop.connect(owner).withdrawTokens(usdt.target, owner.address, ethers.parseUnits("1", 18))
+      ).to.be.revertedWithCustomError(shop, "InsufficientBalance");
 
-      const txWithdraw = await shop.connect(owner).withdrawUSDT(usdtAmount);
-      txWithdraw.wait();
-
-      const afterBalance = await usdt.balanceOf(owner.address);
-
-      expect(await shop.usdtBalance()).to.eq(0);
-      expect(beforeBalance).to.be.at.most(afterBalance);
-      await expect(shop.connect(owner).withdrawUSDT("1")).to.be.revertedWith("insufficient USDT balance");
-
-      await shop.connect(buyer).buyWithUSDT(tokenAmount);
-      await expect(shop.connect(buyer).withdrawUSDT(usdtAmount)).to.be.reverted;
+      await expect(
+        shop.connect(buyer).withdrawTokens(usdt.target, owner.address, usdtAmount)
+      ).to.be.reverted;
     });
 
-    it("only owner can withdraw token from contract", async function () {
+    it("Only owner can withdraw tokens", async function () {
       const { owner, buyer, shop, token } = await loadFixture(deploy);
 
       const tokenAmount = ethers.parseUnits("100", 18);
       const availableTokens = ethers.parseUnits("50000000", 18);
 
-      const beforeBalance = await shop.tokenBalance();
+      const beforeBalance = await shop.availableSaleTokens();
       const beforeOwnerBalance = await token.balanceOf(owner.address);
 
-      const txWithdraw = await shop.connect(owner).withdrawToken(tokenAmount);
-      txWithdraw.wait();
+      const txWithdraw = await shop.connect(owner).withdrawTokens(token.target, owner.address, tokenAmount);
+      await txWithdraw.wait();
 
-      const afterBalance = await shop.tokenBalance();
+      const afterBalance = await shop.availableSaleTokens();
       const afterOwnerBalance = await token.balanceOf(owner.address);
 
-      expect(afterBalance).to.eq(beforeBalance - tokenAmount);
-      expect(afterOwnerBalance).to.eq(beforeOwnerBalance + tokenAmount);
+      expect(afterBalance).to.equal(beforeBalance - tokenAmount);
+      expect(afterOwnerBalance).to.equal(beforeOwnerBalance + tokenAmount);
 
-      await expect(shop.withdrawToken(availableTokens)).to.be.revertedWith("insufficient token balance");
-      await expect(shop.connect(buyer).withdrawToken("1")).to.be.reverted;
+      await expect(
+        shop.connect(owner).withdrawTokens(token.target, owner.address, availableTokens)
+      ).to.be.revertedWithCustomError(shop, "InsufficientBalance");
+      await expect(
+        shop.connect(buyer).withdrawTokens(token.target, owner.address, ethers.parseUnits("1", 18))
+      ).to.be.reverted;
     });
   });
 });
