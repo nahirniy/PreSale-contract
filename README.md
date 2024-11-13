@@ -27,7 +27,7 @@ This repository contains the solution for the Dexola Solidity Bootcamp applicati
 
 ## How to Buy tokens?
 
-1. Use the ethBuyHelper and usdtBuyHelper functions to calculate the required amount of ether or usdt to buy a certain number of tokens. Enter the number of tokens in 18-decimal format, the amount will also be returned in 18-decimal format. (it's free, no gas)
+1. Use the getPurchaseTokenAmount and getNativeTokenAmount functions to calculate the required amount of ether or usdt to buy a certain number of tokens. Enter the number of tokens in 18-decimal format, the amount will also be returned in 18-decimal format. (it's free, no gas)
 2. If you want to buy tokens for the test dollar, you should go to this [link](https://sepolia.etherscan.io/address/0x1531bc5de10618c511349f8007c08966e45ce8ef#writeContract), then mint the amount of dollars and make an approval. In the approval, specify the TokenSale address. If you did, use the BuyWithUSDT function, add the number of zeros to 18. And specify the amount of token.
 3. If you want to buy tokens for test ether. use the BuyWithETH function, add the number of zeros to 18. And specify the amount of token. In the payable field, enter the amount of ether required for the purchase. Don't worry about if you sent more ether than necessary excess will be returned.
 4. After your transaction has been completed successfully, you can view your token balance in the checkUserBalance function, enter your wallet address there. (it's free, no gas)
