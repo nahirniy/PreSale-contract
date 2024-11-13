@@ -1,91 +1,56 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.24;
 
-import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
-import "@openzeppelin/contracts/token/ERC20/extensions/ERC20Burnable.sol";
-import "@openzeppelin/contracts/access/AccessControl.sol";
+import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
+import {ERC20Burnable} from "@openzeppelin/contracts/token/ERC20/extensions/ERC20Burnable.sol";
+import {AccessControl} from "@openzeppelin/contracts/access/AccessControl.sol";
+import {ISolarGreen} from "./interfaces/ISolarGreen.sol";
 
-contract SolarGreen is ERC20, AccessControl {
+/// @title SolarGreen
+/// @notice ERC20 token with a blacklist feature
+contract SolarGreen is ISolarGreen, ERC20, ERC20Burnable, AccessControl {
+    /// @notice Role for the blacklister
     bytes32 public constant BLACKLISTER = keccak256("BLACKLISTER");
+    /// @notice Initial supply of the token
+    uint256 public initiallySupply = 100_000_000 ether;
 
-    uint public initiallySupply = 100000000 ether;
+    /// @notice Mapping to track blacklisted addresses
+    mapping(address => bool) public blacklist;
 
-    mapping(address => bool) private _blacklist;
-
-    constructor(
-        address _owner,
-        address _blacklister
-    ) ERC20("Solar Green", "SGR") {
+    /// @notice Constructor for the SolarGreen contract
+    /// @param _owner The address of the owner
+    constructor(address _owner) ERC20("Solar Green", "SGR") {
+        if (_owner == address(0)) revert InvalidOwner();
         _grantRole(DEFAULT_ADMIN_ROLE, _owner);
-        _grantRole(BLACKLISTER, _blacklister);
+        _grantRole(BLACKLISTER, _owner);
 
-        _mint(address(this), 50000000 ether);
+        _mint(_owner, initiallySupply);
     }
 
-    /**
-     * @dev Mint new tokens and allocate them to a specified account.
-     * @param _to The address where the newly minted tokens will be allocated.
-     * @param _amount The amount of tokens to mint.
-     */
-    function mint(
-        address _to,
-        uint256 _amount
-    ) external onlyRole(DEFAULT_ADMIN_ROLE) {
+    /// @notice Mint new tokens and allocate them to a specified account
+    /// @param _to The address where the newly minted tokens will be allocated
+    /// @param _amount The amount of tokens to mint
+    function mint(address _to, uint256 _amount) external onlyRole(DEFAULT_ADMIN_ROLE) {
         _mint(_to, _amount);
     }
 
-    /**
-     * @dev Burn tokens from the contract's balance.
-     * @param value The amount of tokens to burn.
-     */
-    function burn(uint value) external onlyRole(DEFAULT_ADMIN_ROLE) {
-        _burn(address(this), value);
-    }
-
-    /**
-     *@dev Assigns the role of a blacklister to a new address, granting authority to add addresses to the blacklist.
-     *@param _newBlacklister The address to be assigned the role of a blacklister.
-     */
-    function addBlacklister(
-        address _newBlacklister
-    ) external onlyRole(DEFAULT_ADMIN_ROLE) {
-        _grantRole(BLACKLISTER, _newBlacklister);
-    }
-
-    /**
-     * @dev Removes the role of a blacklister from a specified address, thereby revoking their authority to manage the blacklist.
-     * @param _blacklister The address from which to remove the role of blacklister.
-     */
-    function removeBlacklister(
-        address _blacklister
-    ) external onlyRole(DEFAULT_ADMIN_ROLE) {
-        _revokeRole(BLACKLISTER, _blacklister);
-    }
-
-    /**
-     * @dev Adds the specified address to the blacklist.
-     * @param _address The address to be added to the blacklist.
-     */
+    /// @notice Adds the specified address to the blacklist
+    /// @param _address The address to be added to the blacklist
     function addToBlacklist(address _address) external onlyRole(BLACKLISTER) {
-        _blacklist[_address] = true;
+        if (_address == address(0)) revert InvalidAddress();
+        if (blacklist[_address]) revert AlreadyBlacklisted();
+
+        blacklist[_address] = true;
+        emit Blacklisted(_address);
     }
 
-    /**
-     * @dev Removes the specified address from the blacklist.
-     * @param _address The address to be removed from the blacklist.
-     */
-    function removeFromBlacklist(
-        address _address
-    ) external onlyRole(BLACKLISTER) {
-        _blacklist[_address] = false;
-    }
+    /// @notice Removes the specified address from the blacklist
+    /// @param _address The address to be removed from the blacklist
+    function removeFromBlacklist(address _address) external onlyRole(BLACKLISTER) {
+        if (_address == address(0)) revert InvalidAddress();
+        if (!blacklist[_address]) revert NotBlacklisted();
 
-    /**
-     * @dev Checks if the specified address is blacklisted.
-     * @param _address The address to be checked.
-     * @return Whether the address is blacklisted or not.
-     */
-    function isBlacklisted(address _address) external view returns (bool) {
-        return _blacklist[_address];
+        blacklist[_address] = false;
+        emit RemovedFromBlacklist(_address);
     }
 }
